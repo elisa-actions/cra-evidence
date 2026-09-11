@@ -1,0 +1,96 @@
+name: CRA Evidence
+
+description: Generate CRA evidence artifacts
+
+inputs:
+  app-name:
+    description: Human-readable application name.
+    required: false
+    default: ${{ github.event.repository.name || github.repository }}
+  app-version:
+    description: Application version.
+    required: false
+    default: unknown
+  platform:
+    description: Application platform, such as ios or android.
+    required: false
+    default: unknown
+  source:
+    description: Directory or artifact for Syft to scan.
+    required: false
+    default: .
+  output-directory:
+    description: Directory where evidence files are created.
+    required: false
+    default: cra-evidence
+  artifact-name:
+    description: Name of the uploaded GitHub Actions artifact.
+    required: false
+    default: cra-evidence
+  upload-artifact:
+    description: Whether to upload the evidence directory.
+    required: false
+    default: 'true'
+  vulnerability-scan:
+    description: Whether to run an optional Grype vulnerability scan.
+    required: false
+    default: 'false'
+  fail-on-vulnerabilities:
+    description: Whether detected vulnerabilities should fail the action.
+    required: false
+    default: 'false'
+  fail-on-empty-sbom:
+    description: Whether zero SBOM components should fail the action.
+    required: false
+    default: 'false'
+
+outputs:
+  sbom-path:
+    description: Path to the generated CycloneDX JSON SBOM.
+    value: ${{ steps.generate.outputs.sbom-path }}
+  build-info-path:
+    description: Path to the generated build metadata JSON.
+    value: ${{ steps.generate.outputs.build-info-path }}
+  vulnerability-report-path:
+    description: Path to the vulnerability report, when generated.
+    value: ${{ steps.generate.outputs.vulnerability-report-path }}
+  component-count:
+    description: Number of SBOM components.
+    value: ${{ steps.generate.outputs.component-count }}
+  vulnerability-count:
+    description: Number of vulnerabilities found.
+    value: ${{ steps.generate.outputs.vulnerability-count }}
+  scan-status:
+    description: Vulnerability scan status.
+    value: ${{ steps.generate.outputs.scan-status }}
+  evidence-directory:
+    description: Directory containing generated evidence.
+    value: ${{ steps.generate.outputs.evidence-directory }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate CRA evidence
+      id: generate
+      shell: bash
+      env:
+        CRA_APP_NAME: ${{ inputs.app-name }}
+        CRA_APP_VERSION: ${{ inputs.app-version }}
+        CRA_PLATFORM: ${{ inputs.platform }}
+        CRA_SOURCE: ${{ inputs.source }}
+        CRA_OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
+        CRA_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        CRA_UPLOAD_ARTIFACT: ${{ inputs.upload-artifact }}
+        CRA_VULNERABILITY_SCAN: ${{ inputs.vulnerability-scan }}
+        CRA_FAIL_ON_VULNERABILITIES: ${{ inputs.fail-on-vulnerabilities }}
+        CRA_FAIL_ON_EMPTY_SBOM: ${{ inputs.fail-on-empty-sbom }}
+      run: |
+        "${GITHUB_ACTION_PATH}/scripts/generate-cra-evidence.sh"
+
+    - name: Upload CRA evidence
+      if: ${{ inputs.upload-artifact == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output-directory }}
+        if-no-files-found: error
