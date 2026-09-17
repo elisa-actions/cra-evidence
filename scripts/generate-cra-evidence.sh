@@ -174,7 +174,7 @@ extract_android_aab_signing() {
 }
 
 extract_ios_ipa_signing() {
-  local extract_directory ipa_app certificate_path certificate_details code_signature_details
+  local extract_directory ipa_app certificate_path certificate_details certificate_fingerprint code_signature_details
   extract_directory="$(mktemp -d)"
   unzip -qq "$BUILD_ARTIFACT" 'Payload/*.app/*' -d "$extract_directory" || {
     rm -rf "$extract_directory"
@@ -196,9 +196,14 @@ extract_ios_ipa_signing() {
     exit 1
   }
   certificate_path="$extract_directory/codesign0"
-  certificate_details="$(openssl x509 -inform der -in "$certificate_path" -noout -fingerprint -sha256 -subject -issuer -serial -startdate -enddate)" || {
+  certificate_details="$(openssl x509 -inform der -in "$certificate_path" -noout -subject -issuer -serial -startdate -enddate)" || {
     rm -rf "$extract_directory"
     printf '::error::Could not inspect IPA signing certificate: %s\n' "$BUILD_ARTIFACT" >&2
+    exit 1
+  }
+  certificate_fingerprint="$(openssl x509 -inform der -in "$certificate_path" -noout -fingerprint -sha256)" || {
+    rm -rf "$extract_directory"
+    printf '::error::Could not calculate IPA signing certificate SHA-256 digest: %s\n' "$BUILD_ARTIFACT" >&2
     exit 1
   }
   code_signature_details="$(codesign -d --verbose=4 "$ipa_app" 2>&1)"
@@ -207,13 +212,13 @@ extract_ios_ipa_signing() {
   subject="$(printf '%s\n' "$certificate_details" | sed -n 's/^subject=//p' | head -n 1)"
   issuer="$(printf '%s\n' "$certificate_details" | sed -n 's/^issuer=//p' | head -n 1)"
   serial_number="$(printf '%s\n' "$certificate_details" | sed -n 's/^serial=//p' | head -n 1)"
-  sha256="$(printf '%s\n' "$certificate_details" | sed -n 's/^sha256 Fingerprint=//p' | head -n 1)"
+  sha256="$(printf '%s' "$certificate_fingerprint" | sed 's/^[^=]*=//' | tr -d '[:space:]')"
   valid_from="$(printf '%s\n' "$certificate_details" | sed -n 's/^notBefore=//p' | head -n 1)"
   valid_to="$(printf '%s\n' "$certificate_details" | sed -n 's/^notAfter=//p' | head -n 1)"
   code_directory_hash="$(printf '%s\n' "$code_signature_details" | sed -n 's/^CDHash=//p' | head -n 1)"
   rm -rf "$extract_directory"
-  if [[ -z "$sha256" ]]; then
-    printf '::error::IPA signing certificate SHA-256 digest was not reported.\n' >&2
+  if [[ ! "$sha256" =~ ^([[:xdigit:]]{2}:){31}[[:xdigit:]]{2}$ ]]; then
+    printf '::error::IPA signing certificate SHA-256 digest was not reported in a recognized format.\n%s\n' "$certificate_fingerprint" >&2
     exit 1
   fi
 
