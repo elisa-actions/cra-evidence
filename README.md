@@ -2,7 +2,8 @@
 
 GitHub Action that generates technical evidence for an application's
 dependency inventory. It creates a CycloneDX JSON SBOM, build metadata, an
-optional Grype vulnerability report, and an optional GitHub Actions artifact.
+optional Grype vulnerability report, an optional GitHub Actions artifact, and
+publishes the generated evidence to the centrally managed CRA GCAR repository.
 
 This is an initial CRA evidence prototype. The generated artifacts may support
 CRA-related processes, but this action does not establish CRA compliance or
@@ -13,6 +14,8 @@ produce complete or legally sufficient evidence.
 - A self-hosted macOS runner with `syft`, `jq`, and `zip` available in `PATH`.
 - `cyclonedx` is reported when available for diagnostics.
 - `grype` is optional and is never installed by this action.
+- GCAR upload uses Google Cloud Workload Identity Federation. The caller job
+  must grant `id-token: write`; customers do not provide GCAR configuration.
 - When `build-artifact` is set, tools matching the artifact type are also required:
   - `.apk`: `apksigner`.
   - `.aab`: `keytool`.
@@ -81,6 +84,9 @@ on:
 jobs:
   evidence:
     runs-on: [self-hosted, macos]
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -136,7 +142,30 @@ Boolean inputs are strings and must be exactly `true` or `false`.
 - `evidence-directory`: Directory containing generated evidence.
 - `evidence-archive-path`: Path to the timestamped ZIP archive of the evidence directory.
 - `evidence-archive-name`: Filename of the timestamped ZIP archive.
-- `evidence-version`: Lowercase app, version, platform, and UTC timestamp string, suitable as an artifact registry version.
+- `evidence-version`: Normalized repository, app, version, platform, workflow
+  run ID, and attempt used as the Artifact Registry version.
+- `gcar-package-resource`: Resource name of the uploaded GCAR package version.
+
+## Google Cloud Artifact Registry upload
+
+The action authenticates through GitHub OIDC and uploads every file in
+`evidence-directory` to the centrally managed `cra-evidence` generic Artifact
+Registry package. The generated `evidence-version` is used as the immutable
+package version, keeping evidence from different repositories and workflow
+attempts distinct.
+
+The calling job only needs permission to request an OIDC token:
+
+```yaml
+jobs:
+  evidence:
+    permissions:
+      contents: read
+      id-token: write
+```
+
+The Google Cloud Workload Identity Provider must trust the calling repository.
+No Google Cloud identifiers or credentials are accepted from customers.
 
 ## Common configurations
 

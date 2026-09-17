@@ -90,6 +90,9 @@ outputs:
   evidence-version:
     description: Lowercase app, version, platform, and UTC timestamp suitable as an artifact registry version.
     value: ${{ steps.generate.outputs.evidence-version }}
+  gcar-package-resource:
+    description: Resource name of the uploaded GCAR generic package version.
+    value: ${{ steps.publish-gcar.outputs.package-resource }}
 
 runs:
   using: composite
@@ -116,8 +119,43 @@ runs:
 
     - name: Upload CRA evidence
       if: ${{ inputs.upload-artifact == 'true' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.output-directory }}
         if-no-files-found: error
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v3
+      with:
+        project_id: sre-mobileapps-cra-sbom-8075
+        workload_identity_provider: projects/969529602373/locations/global/workloadIdentityPools/github/providers/github
+
+    - name: Set up Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v3
+
+    - name: Upload CRA evidence to GCAR
+      id: publish-gcar
+      shell: bash
+      env:
+        EVIDENCE_DIRECTORY: ${{ steps.generate.outputs.evidence-directory }}
+        EVIDENCE_VERSION: ${{ steps.generate.outputs.evidence-version }}
+        GCAR_LOCATION: europe-north1
+        GCAR_PACKAGE: cra-evidence
+        GCAR_PROJECT_ID: sre-mobileapps-cra-sbom-8075
+        GCAR_REPOSITORY: cra-evidence
+      run: |
+        set -euo pipefail
+        gcloud artifacts generic upload \
+          --project="$GCAR_PROJECT_ID" \
+          --location="$GCAR_LOCATION" \
+          --repository="$GCAR_REPOSITORY" \
+          --package="$GCAR_PACKAGE" \
+          --version="$EVIDENCE_VERSION" \
+          --source-directory="$EVIDENCE_DIRECTORY" \
+          --quiet
+        package_resource="projects/$GCAR_PROJECT_ID/locations/$GCAR_LOCATION/repositories/$GCAR_REPOSITORY/packages/$GCAR_PACKAGE/versions/$EVIDENCE_VERSION"
+        printf 'package-resource=%s\n' "$package_resource" >> "$GITHUB_OUTPUT"
+        if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+          printf -- '- GCAR package version: `%s`\n' "$package_resource" >> "$GITHUB_STEP_SUMMARY"
+        fi

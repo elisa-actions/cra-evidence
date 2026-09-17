@@ -528,7 +528,8 @@ find "$OUTPUT_DIRECTORY" -maxdepth 1 -type f -print
 archive_timestamp="$(date -u +'%Y%m%dt%H%M%Sz')"
 archive_stem="${APP_NAME}-${APP_VERSION}-${PLATFORM}"
 archive_stem="$(printf '%s' "$archive_stem" | tr '[:space:]/' '--' | tr -cd '[:alnum:]._+-')"
-evidence_version="$(printf '%s' "${archive_stem}-${archive_timestamp}" \
+evidence_version_stem="${GITHUB_REPOSITORY:-local}-${archive_stem}-${GITHUB_RUN_ID:-$archive_timestamp}-${GITHUB_RUN_ATTEMPT:-1}"
+evidence_version="$(printf '%s' "$evidence_version_stem" \
   | tr '[:upper:]' '[:lower:]' \
   | sed -E 's/[^a-z0-9.+~:-]+/-/g; s/-+/-/g; s/^[^a-z0-9]+//; s/[^a-z0-9]+$//')"
 archive_directory="$(cd "$(dirname "$OUTPUT_DIRECTORY")" && pwd)"
