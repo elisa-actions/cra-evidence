@@ -3,6 +3,9 @@ name: CRA Evidence
 description: Generate CRA evidence artifacts
 
 inputs:
+  workload-identity-provider:
+    description: Full Google Cloud Workload Identity Provider resource used for GitHub OIDC authentication.
+    required: true
   app-name:
     description: Human-readable application name.
     required: false
@@ -129,7 +132,7 @@ runs:
       uses: google-github-actions/auth@v3
       with:
         project_id: sre-mobileapps-cra-sbom-8075
-        workload_identity_provider: projects/969529602373/locations/global/workloadIdentityPools/github/providers/github
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
 
     - name: Set up Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v3
