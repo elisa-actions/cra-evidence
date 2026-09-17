@@ -88,7 +88,7 @@ outputs:
     description: Filename of the timestamped CRA evidence ZIP archive.
     value: ${{ steps.generate.outputs.evidence-archive-name }}
   evidence-version:
-    description: Lowercase app, version, platform, and UTC timestamp suitable as an artifact registry version.
+    description: Normalized repository, app, version, platform, workflow run ID, and attempt used as the Artifact Registry version.
     value: ${{ steps.generate.outputs.evidence-version }}
   gcar-package-resource:
     description: Resource name of the uploaded GCAR generic package version.
