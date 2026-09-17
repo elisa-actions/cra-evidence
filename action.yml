@@ -19,6 +19,18 @@ inputs:
     description: Directory or artifact for Syft to scan.
     required: false
     default: .
+  build-artifact:
+    description: Shipped .apk, .aab, or .ipa used to generate build-artifact.json signing evidence.
+    required: false
+    default: ''
+  build-number:
+    description: Platform build number for the shipped artifact. Required when build-artifact is set.
+    required: false
+    default: ''
+  build-time:
+    description: Optional ISO 8601 build time for the shipped artifact.
+    required: false
+    default: ''
   output-directory:
     description: Directory where evidence files are created.
     required: false
@@ -51,6 +63,9 @@ outputs:
   build-info-path:
     description: Path to the generated build metadata JSON.
     value: ${{ steps.generate.outputs.build-info-path }}
+  build-artifact-path:
+    description: Path to the build artifact signing metadata JSON, or empty when build-artifact was not set.
+    value: ${{ steps.generate.outputs.build-artifact-path }}
   vulnerability-report-path:
     description: Path to the vulnerability report, when generated.
     value: ${{ steps.generate.outputs.vulnerability-report-path }}
@@ -66,6 +81,15 @@ outputs:
   evidence-directory:
     description: Directory containing generated evidence.
     value: ${{ steps.generate.outputs.evidence-directory }}
+  evidence-archive-path:
+    description: Path to the timestamped CRA evidence ZIP archive.
+    value: ${{ steps.generate.outputs.evidence-archive-path }}
+  evidence-archive-name:
+    description: Filename of the timestamped CRA evidence ZIP archive.
+    value: ${{ steps.generate.outputs.evidence-archive-name }}
+  evidence-version:
+    description: Lowercase app, version, platform, and UTC timestamp suitable as an artifact registry version.
+    value: ${{ steps.generate.outputs.evidence-version }}
 
 runs:
   using: composite
@@ -78,6 +102,9 @@ runs:
         CRA_APP_VERSION: ${{ inputs.app-version }}
         CRA_PLATFORM: ${{ inputs.platform }}
         CRA_SOURCE: ${{ inputs.source }}
+        CRA_BUILD_ARTIFACT: ${{ inputs.build-artifact }}
+        CRA_BUILD_NUMBER: ${{ inputs.build-number }}
+        CRA_BUILD_TIME: ${{ inputs.build-time }}
         CRA_OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
         CRA_ARTIFACT_NAME: ${{ inputs.artifact-name }}
         CRA_UPLOAD_ARTIFACT: ${{ inputs.upload-artifact }}
