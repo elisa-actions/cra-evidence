@@ -132,7 +132,7 @@ runs:
       uses: google-github-actions/auth@v3
       with:
         project_id: sre-mobileapps-cra-sbom-8075
-        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        workload_identity_provider: ${{ inputs.GCAR_WORKLOAD_IDENTITY_PROVIDER }}
 
     - name: Set up Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v3
