@@ -15,8 +15,8 @@ produce complete or legally sufficient evidence.
 - `cyclonedx` is reported when available for diagnostics.
 - `grype` is optional and is never installed by this action.
 - GCAR upload uses Google Cloud Workload Identity Federation. The caller job
-  must grant `id-token: write` and provide its approved Workload Identity
-  Provider resource name.
+  must grant `id-token: write`; the action configures the shared Workload
+  Identity Provider.
 - When `build-artifact` is set, tools matching the artifact type are also required:
   - `.apk`: `apksigner`.
   - `.aab`: `keytool`.
@@ -44,7 +44,6 @@ Add a step to your workflow that references this repository:
 - name: Generate CRA evidence
   uses: elisa-actions/cra-evidence@main
   with:
-    workload-identity-provider: projects/123456789/locations/global/workloadIdentityPools/github/providers/github
     app-name: TarmoTestApp
     app-version: 0.1.0
     platform: ios
@@ -61,7 +60,6 @@ For Android, point `build-artifact` at the shipped `.apk` or `.aab`:
 - name: Generate CRA evidence
   uses: elisa-actions/cra-evidence@main
   with:
-    workload-identity-provider: projects/123456789/locations/global/workloadIdentityPools/github/providers/github
     app-name: TarmoTestApp
     app-version: 0.1.0
     platform: android
@@ -98,7 +96,6 @@ jobs:
         id: cra
         uses: elisa-actions/cra-evidence@main
         with:
-          workload-identity-provider: projects/123456789/locations/global/workloadIdentityPools/github/providers/github
           app-name: MyApp
           app-version: 0.1.0
           platform: ios
@@ -118,7 +115,6 @@ jobs:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `workload-identity-provider` | Required | Full Workload Identity Provider resource approved for access to the CRA GCAR repository. |
 | `app-name` | Repository name | Human-readable application name. |
 | `app-version` | `unknown` | Application version. |
 | `platform` | `unknown` | Application platform, such as `ios` or `android`. |
@@ -159,8 +155,8 @@ Registry package. The generated `evidence-version` is used as the immutable
 package version, keeping evidence from different repositories and workflow
 attempts distinct.
 
-The calling job needs permission to request an OIDC token and passes its
-approved provider resource to the action:
+The action uses the shared Workload Identity Provider configured in
+`action.yml`. The calling job only needs permission to request an OIDC token:
 
 ```yaml
 jobs:
@@ -171,7 +167,6 @@ jobs:
     steps:
       - uses: elisa-actions/cra-evidence@main
         with:
-          workload-identity-provider: projects/123456789/locations/global/workloadIdentityPools/github/providers/github
           app-name: MyApp
           app-version: 1.0.0
           platform: ios
