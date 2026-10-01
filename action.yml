@@ -119,7 +119,7 @@ runs:
 
     - name: Upload CRA evidence (GitHub.com)
       if: ${{ inputs.upload-artifact == 'true' && github.server_url == 'https://github.com' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@main
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.output-directory }}
