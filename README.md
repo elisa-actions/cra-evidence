@@ -22,8 +22,8 @@ produce complete or legally sufficient evidence.
   - `.aab`: `keytool`.
   - `.ipa`: `unzip`, `openssl`, and `codesign`.
 - The caller must be allowed to upload artifacts when `upload-artifact` is
-  `true`. The action uses `upload-artifact@main` on GitHub.com and the
-  GHES-compatible `upload-artifact@v3` on GitHub Enterprise Server.
+  `true`. The default entrypoint uses `upload-artifact@v7` on GitHub.com. The
+  `/ghes` entrypoint uses GHES-compatible `upload-artifact@v3.2.2`.
 
 Check installed tool versions on the runner, for example:
 
@@ -54,6 +54,21 @@ Add a step to your workflow that references this repository:
     build-number: '42'
     vulnerability-scan: 'true'
     fail-on-vulnerabilities: 'false'
+```
+
+On GitHub Enterprise Server, use the `/ghes` entrypoint instead. Separate
+entrypoints are required because GitHub.com rejects any metadata containing a
+deprecated v3 artifact action reference, even when that step has a false
+condition:
+
+```yaml
+- name: Generate CRA evidence
+  uses: elisa-actions/cra-evidence/ghes@main
+  with:
+    app-name: TarmoTestApp
+    app-version: 0.1.0
+    platform: ios
+    source: .
 ```
 
 For Android, point `build-artifact` at the shipped `.apk` or `.aab`:
@@ -157,11 +172,11 @@ Registry package. The generated `evidence-version` is used as the immutable
 package version, keeping evidence from different repositories and workflow
 attempts distinct.
 
-The action selects the shared Workload Identity Provider configured in
-`action.yml` from `github.server_url`: GitHub.com uses the GitHub.com provider,
-and GitHub Enterprise Server uses the GHES provider. The calling job does not
-need to provide its server URL or a secret for provider selection; it only
-needs permission to request an OIDC token:
+Each action entrypoint configures its corresponding shared Workload Identity
+Provider: the default entrypoint uses the GitHub.com provider, and `/ghes` uses
+the GHES provider. The calling job does not need to provide its server URL or a
+secret for provider selection; it only needs permission to request an OIDC
+token:
 
 ```yaml
 jobs:
@@ -276,7 +291,9 @@ artifact storage in addition to, or instead of, the GitHub Actions artifact.
 - **`build-number is required when build-artifact is set`:** Pass
   `build-number` alongside `build-artifact`.
 - **No artifact:** Confirm `upload-artifact` is `true` and the runner has
-  permission to use the configured artifact action.
+  permission to use the configured artifact action. On GHES, confirm the
+  workflow uses `elisa-actions/cra-evidence/ghes@<ref>` rather than the default
+  entrypoint.
 
 Generated `sbom.json`, `build-info.json`, `build-artifact.json`,
 `vulnerability-report.json`, evidence directories, and evidence ZIP archives
