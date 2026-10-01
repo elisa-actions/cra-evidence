@@ -21,7 +21,9 @@ produce complete or legally sufficient evidence.
   - `.apk`: `apksigner`.
   - `.aab`: `keytool`.
   - `.ipa`: `unzip`, `openssl`, and `codesign`.
-- The caller must be allowed to upload artifacts when `upload-artifact` is `true`.
+- The caller must be allowed to upload artifacts when `upload-artifact` is
+  `true`. The action uses `upload-artifact@main` on GitHub.com and the
+  GHES-compatible `upload-artifact@v3` on GitHub Enterprise Server.
 
 Check installed tool versions on the runner, for example:
 
@@ -264,6 +266,10 @@ artifact storage in addition to, or instead of, the GitHub Actions artifact.
   the selected self-hosted runner and available in the non-interactive
   workflow `PATH`. When `build-artifact` is set, also verify the matching
   signing tool (`apksigner`, `keytool`, or `unzip`/`openssl`/`codesign`).
+- **`gcloud CLI is not authenticated` warning:** This warning from
+  `setup-gcloud` is expected. The action deliberately does not create a
+  refreshable credential file; the GCAR upload uses the short-lived federated
+  token from the preceding authentication step through `--access-token-file`.
 - **Unexpected dependency count:** Check `source`; scanning `.` includes CI
   and tooling dependencies. Test against an app containing SPM, CocoaPods, or
   other real third-party dependencies.
