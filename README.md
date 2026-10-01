@@ -182,6 +182,11 @@ The provider's pool or mapped organization principal must have writer access to
 the CRA GCAR repository. The provider resource name is not a credential; no
 long-lived Google Cloud credential is accepted from customers.
 
+The action uses the short-lived federated token issued during its authentication
+step directly for the GCAR upload. It does not persist a refreshable Google Cloud
+credential file, avoiding a second OIDC token request after authentication on
+GitHub Enterprise Server.
+
 ## Common configurations
 
 Scan a build artifact instead of the checked-out source, for stronger release
