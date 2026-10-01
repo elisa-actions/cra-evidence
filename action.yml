@@ -126,8 +126,11 @@ runs:
         if-no-files-found: error
 
     - name: Authenticate to Google Cloud
+      id: auth
       uses: google-github-actions/auth@v3
       with:
+        create_credentials_file: false
+        export_environment_variables: false
         project_id: sre-mobileapps-cra-sbom-8075
         workload_identity_provider: ${{ github.server_url == 'https://github.com' && 'projects/149068545796/locations/global/workloadIdentityPools/githubcom/providers/githubcom' || 'projects/149068545796/locations/global/workloadIdentityPools/ghes/providers/ghes' }}
 
@@ -140,13 +143,19 @@ runs:
       env:
         EVIDENCE_DIRECTORY: ${{ steps.generate.outputs.evidence-directory }}
         EVIDENCE_VERSION: ${{ steps.generate.outputs.evidence-version }}
+        GCLOUD_ACCESS_TOKEN: ${{ steps.auth.outputs.auth_token }}
         GCAR_LOCATION: europe-north1
         GCAR_PACKAGE: cra-evidence
         GCAR_PROJECT_ID: sre-mobileapps-cra-sbom-8075
         GCAR_REPOSITORY: cra-evidence
       run: |
         set -euo pipefail
-        gcloud artifacts generic upload \
+        access_token_file="$(mktemp "${RUNNER_TEMP:-/tmp}/cra-gcloud-token.XXXXXX")"
+        trap 'rm -f "$access_token_file"' EXIT
+        chmod 600 "$access_token_file"
+        printf '%s' "$GCLOUD_ACCESS_TOKEN" > "$access_token_file"
+        unset GCLOUD_ACCESS_TOKEN
+        gcloud --access-token-file="$access_token_file" artifacts generic upload \
           --project="$GCAR_PROJECT_ID" \
           --location="$GCAR_LOCATION" \
           --repository="$GCAR_REPOSITORY" \
