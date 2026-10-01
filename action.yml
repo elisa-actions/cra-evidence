@@ -118,8 +118,16 @@ runs:
         "${GITHUB_ACTION_PATH}/scripts/generate-cra-evidence.sh"
 
     - name: Upload CRA evidence (GitHub.com)
-      # Can't use exact version for upload-artifact due difference of supported action in GHES and github.com
+      if: ${{ inputs.upload-artifact == 'true' && github.server_url == 'https://github.com' }}
       uses: actions/upload-artifact@main
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output-directory }}
+        if-no-files-found: error
+
+    - name: Upload CRA evidence (GitHub Enterprise Server)
+      if: ${{ inputs.upload-artifact == 'true' && github.server_url != 'https://github.com' }}
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.output-directory }}
