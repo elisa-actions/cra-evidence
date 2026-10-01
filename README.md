@@ -16,7 +16,7 @@ produce complete or legally sufficient evidence.
 - `grype` is optional and is never installed by this action.
 - GCAR upload uses Google Cloud Workload Identity Federation. The caller job
   must grant `id-token: write`; the action configures the shared Workload
-  Identity Provider.
+  Identity Provider for GitHub.com or GitHub Enterprise Server automatically.
 - When `build-artifact` is set, tools matching the artifact type are also required:
   - `.apk`: `apksigner`.
   - `.aab`: `keytool`.
@@ -155,8 +155,11 @@ Registry package. The generated `evidence-version` is used as the immutable
 package version, keeping evidence from different repositories and workflow
 attempts distinct.
 
-The action uses the shared Workload Identity Provider configured in
-`action.yml`. The calling job only needs permission to request an OIDC token:
+The action selects the shared Workload Identity Provider configured in
+`action.yml` from `github.server_url`: GitHub.com uses the GitHub.com provider,
+and GitHub Enterprise Server uses the GHES provider. The calling job does not
+need to provide its server URL or a secret for provider selection; it only
+needs permission to request an OIDC token:
 
 ```yaml
 jobs:
