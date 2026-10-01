@@ -119,7 +119,7 @@ runs:
 
     - name: Upload CRA evidence
       if: ${{ inputs.upload-artifact == 'true' }}
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}
         path: ${{ inputs.output-directory }}
