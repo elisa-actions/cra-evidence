@@ -15,8 +15,8 @@ produce complete or legally sufficient evidence.
 - `cyclonedx` is reported when available for diagnostics.
 - `grype` is optional and is never installed by this action.
 - GCAR upload uses Google Cloud Workload Identity Federation. The caller job
-  must grant `id-token: write`; the action configures the shared Workload
-  Identity Provider for GitHub.com or GitHub Enterprise Server automatically.
+  must grant `id-token: write` and provide the Google Cloud and Artifact
+  Registry settings required by the selected entrypoint.
 - When `build-artifact` is set, tools matching the artifact type are also required:
   - `.apk`: `apksigner`.
   - `.aab`: `keytool`.
@@ -46,7 +46,7 @@ Add a step to your workflow that references this repository:
 - name: Generate CRA evidence
   uses: elisa-actions/cra-evidence@main
   with:
-    app-name: TarmoTestApp
+    app-name: MyApp
     app-version: 0.1.0
     platform: ios
     source: .
@@ -54,6 +54,12 @@ Add a step to your workflow that references this repository:
     build-number: '42'
     vulnerability-scan: 'true'
     fail-on-vulnerabilities: 'false'
+    google-cloud-project-id: YOUR_GOOGLE_CLOUD_PROJECT_ID
+    workload-identity-provider: YOUR_GITHUB_COM_WORKLOAD_IDENTITY_PROVIDER_RESOURCE
+    gcar-location: YOUR_GCAR_LOCATION
+    gcar-package: YOUR_GCAR_PACKAGE
+    gcar-project-id: YOUR_GCAR_PROJECT_ID
+    gcar-repository: YOUR_GCAR_REPOSITORY
 ```
 
 On GitHub Enterprise Server, use the `/ghes` entrypoint instead. Separate
@@ -65,10 +71,16 @@ condition:
 - name: Generate CRA evidence
   uses: elisa-actions/cra-evidence/ghes@main
   with:
-    app-name: TarmoTestApp
+    app-name: MyApp
     app-version: 0.1.0
     platform: ios
     source: .
+    google-cloud-project-id: YOUR_GOOGLE_CLOUD_PROJECT_ID
+    workload-identity-provider: YOUR_GHES_WORKLOAD_IDENTITY_PROVIDER_RESOURCE
+    gcar-location: YOUR_GCAR_LOCATION
+    gcar-package: YOUR_GCAR_PACKAGE
+    gcar-project-id: YOUR_GCAR_PROJECT_ID
+    gcar-repository: YOUR_GCAR_REPOSITORY
 ```
 
 For Android, point `build-artifact` at the shipped `.apk` or `.aab`:
@@ -85,6 +97,12 @@ For Android, point `build-artifact` at the shipped `.apk` or `.aab`:
     build-number: '42'
     vulnerability-scan: 'true'
     fail-on-vulnerabilities: 'false'
+    google-cloud-project-id: YOUR_GOOGLE_CLOUD_PROJECT_ID
+    workload-identity-provider: YOUR_GITHUB_COM_WORKLOAD_IDENTITY_PROVIDER_RESOURCE
+    gcar-location: YOUR_GCAR_LOCATION
+    gcar-package: YOUR_GCAR_PACKAGE
+    gcar-project-id: YOUR_GCAR_PROJECT_ID
+    gcar-repository: YOUR_GCAR_REPOSITORY
 ```
 
 Use `main` while integrating a change. Once a release tag exists, pin to it
@@ -119,6 +137,12 @@ jobs:
           source: .
           vulnerability-scan: 'true'
           fail-on-vulnerabilities: 'false'
+          google-cloud-project-id: YOUR_GOOGLE_CLOUD_PROJECT_ID
+          workload-identity-provider: YOUR_GITHUB_COM_WORKLOAD_IDENTITY_PROVIDER_RESOURCE
+          gcar-location: YOUR_GCAR_LOCATION
+          gcar-package: YOUR_GCAR_PACKAGE
+          gcar-project-id: YOUR_GCAR_PROJECT_ID
+          gcar-repository: YOUR_GCAR_REPOSITORY
 
       - name: Display CRA evidence result
         shell: bash
@@ -145,6 +169,12 @@ jobs:
 | `vulnerability-scan` | `false` | Whether to run Grype. |
 | `fail-on-vulnerabilities` | `false` | Whether findings or scan failure should fail the action. |
 | `fail-on-empty-sbom` | `false` | Whether zero SBOM components should fail the action. |
+| `google-cloud-project-id` | (required) | Google Cloud project ID used by the authentication action. |
+| `workload-identity-provider` | (required) | Full Workload Identity Provider resource name for this repository. |
+| `gcar-location` | (required) | Artifact Registry location containing the CRA repository. |
+| `gcar-package` | (required) | Artifact Registry generic package name. |
+| `gcar-project-id` | (required) | Google Cloud project ID containing the CRA Artifact Registry repository. |
+| `gcar-repository` | (required) | Artifact Registry repository name. |
 
 Boolean inputs are strings and must be exactly `true` or `false`.
 
@@ -172,11 +202,10 @@ Registry package. The generated `evidence-version` is used as the immutable
 package version, keeping evidence from different repositories and workflow
 attempts distinct.
 
-Each action entrypoint configures its corresponding shared Workload Identity
-Provider: the default entrypoint uses the GitHub.com provider, and `/ghes` uses
-the GHES provider. The calling job does not need to provide its server URL or a
-secret for provider selection; it only needs permission to request an OIDC
-token:
+Set `workload-identity-provider` to the resource name trusted for the calling
+repository. Use the GitHub.com provider with the default entrypoint and the
+GHES provider with `/ghes`. The provider name is not a secret; the caller only
+needs permission to request an OIDC token:
 
 ```yaml
 jobs:
@@ -192,6 +221,12 @@ jobs:
           platform: ios
           build-artifact: build/MyApp.ipa
           build-number: '42'
+          google-cloud-project-id: YOUR_GOOGLE_CLOUD_PROJECT_ID
+          workload-identity-provider: YOUR_GITHUB_COM_WORKLOAD_IDENTITY_PROVIDER_RESOURCE
+          gcar-location: YOUR_GCAR_LOCATION
+          gcar-package: YOUR_GCAR_PACKAGE
+          gcar-project-id: YOUR_GCAR_PROJECT_ID
+          gcar-repository: YOUR_GCAR_REPOSITORY
 ```
 
 The Google Cloud Workload Identity Provider must trust the calling repository.
