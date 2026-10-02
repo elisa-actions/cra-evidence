@@ -55,6 +55,24 @@ inputs:
     description: Whether zero SBOM components should fail the action.
     required: false
     default: 'false'
+  google-cloud-project-id:
+    description: Google Cloud project ID used by the authentication action.
+    required: true
+  workload-identity-provider:
+    description: Full Workload Identity Provider resource name for this repository.
+    required: true
+  gcar-location:
+    description: Artifact Registry location containing the CRA repository.
+    required: true
+  gcar-package:
+    description: Artifact Registry generic package name.
+    required: true
+  gcar-project-id:
+    description: Google Cloud project ID containing the CRA Artifact Registry repository.
+    required: true
+  gcar-repository:
+    description: Artifact Registry repository name.
+    required: true
 
 outputs:
   sbom-path:
@@ -131,8 +149,8 @@ runs:
       with:
         create_credentials_file: false
         export_environment_variables: false
-        project_id: sre-mobileapps-cra-sbom-8075
-        workload_identity_provider: projects/149068545796/locations/global/workloadIdentityPools/ghes/providers/ghes
+        project_id: ${{ inputs.google-cloud-project-id }}
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
 
     - name: Set up Google Cloud CLI
       uses: google-github-actions/setup-gcloud@v3
@@ -144,10 +162,10 @@ runs:
         EVIDENCE_DIRECTORY: ${{ steps.generate.outputs.evidence-directory }}
         EVIDENCE_VERSION: ${{ steps.generate.outputs.evidence-version }}
         GCLOUD_ACCESS_TOKEN: ${{ steps.auth.outputs.auth_token }}
-        GCAR_LOCATION: europe-north1
-        GCAR_PACKAGE: cra-evidence
-        GCAR_PROJECT_ID: sre-mobileapps-cra-sbom-8075
-        GCAR_REPOSITORY: cra-evidence
+        GCAR_LOCATION: ${{ inputs.gcar-location }}
+        GCAR_PACKAGE: ${{ inputs.gcar-package }}
+        GCAR_PROJECT_ID: ${{ inputs.gcar-project-id }}
+        GCAR_REPOSITORY: ${{ inputs.gcar-repository }}
       run: |
         set -euo pipefail
         access_token_file="$(mktemp "${RUNNER_TEMP:-/tmp}/cra-gcloud-token.XXXXXX")"
