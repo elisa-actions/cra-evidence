@@ -89,7 +89,7 @@ For Android, point `build-artifact` at the shipped `.apk` or `.aab`:
 - name: Generate CRA evidence
   uses: elisa-actions/cra-evidence@main
   with:
-    app-name: TarmoTestApp
+    app-name: MyApp
     app-version: 0.1.0
     platform: android
     source: .
