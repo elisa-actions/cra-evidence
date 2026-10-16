@@ -11,7 +11,9 @@ produce complete or legally sufficient evidence.
 
 ## Prerequisites
 
-- A self-hosted macOS runner with `syft`, `jq`, and `zip` available in `PATH`.
+- A self-hosted macOS or Linux runner with `syft`, `jq`, and `zip` available
+  in `PATH`.
+- Linux runners need `sha256sum` and `sha512sum`; macOS runners use `shasum`.
 - `cyclonedx` is reported when available for diagnostics.
 - `grype` is optional and is never installed by this action.
 - GCAR upload uses Google Cloud Workload Identity Federation. The caller job
@@ -20,7 +22,7 @@ produce complete or legally sufficient evidence.
 - When `build-artifact` is set, tools matching the artifact type are also required:
   - `.apk`: `apksigner`.
   - `.aab`: `keytool`.
-  - `.ipa`: `unzip`, `openssl`, and `codesign`.
+  - `.ipa`: macOS runner with `unzip`, `openssl`, and `codesign`.
 - The caller must be allowed to upload artifacts when `upload-artifact` is
   `true`. The default entrypoint uses `upload-artifact@v7` on GitHub.com. The
   `/ghes` entrypoint uses GHES-compatible `upload-artifact@v3.2.2`.
@@ -31,6 +33,8 @@ Check installed tool versions on the runner, for example:
 syft version
 jq --version
 zip --version
+sha256sum --version # Linux only
+sha512sum --version # Linux only
 grype version       # only needed when vulnerability-scan is enabled
 apksigner --version # only needed for .apk build-artifact
 keytool -help       # only needed for .aab build-artifact
@@ -312,10 +316,12 @@ artifact storage in addition to, or instead of, the GitHub Actions artifact.
 ## Troubleshooting
 
 - **Action not found:** Check the repository name and ref used in `uses`.
-- **Required tool missing:** Verify `syft`, `jq`, and `zip` are installed on
-  the selected self-hosted runner and available in the non-interactive
+- **Required tool missing:** Verify `syft`, `jq`, `zip`, and the platform's
+  hashing tools (`sha256sum`/`sha512sum` on Linux or `shasum` on macOS) are
+  installed on the selected runner and available in the non-interactive
   workflow `PATH`. When `build-artifact` is set, also verify the matching
-  signing tool (`apksigner`, `keytool`, or `unzip`/`openssl`/`codesign`).
+  signing tool (`apksigner`, `keytool`, or, for `.ipa`, macOS `codesign` plus
+  `unzip` and `openssl`).
 - **`gcloud CLI is not authenticated` warning:** This warning from
   `setup-gcloud` is expected. The action deliberately does not create a
   refreshable credential file; the GCAR upload uses the short-lived federated

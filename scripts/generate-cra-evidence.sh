@@ -2,6 +2,17 @@
 
 set -euo pipefail
 
+runner_os="${RUNNER_OS:-$(uname -s)}"
+RUNNER_PLATFORM="macOS"
+case "$runner_os" in
+  macOS|Darwin) ;;
+  Linux) RUNNER_PLATFORM="Linux" ;;
+  *)
+    printf '::error::Unsupported runner OS: %s. This action supports macOS and Linux.\n' "$runner_os" >&2
+    exit 1
+    ;;
+esac
+
 APP_NAME="${CRA_APP_NAME:-${GITHUB_REPOSITORY##*/}}"
 APP_VERSION="${CRA_APP_VERSION:-unknown}"
 PLATFORM="${CRA_PLATFORM:-unknown}"
@@ -44,6 +55,10 @@ fi
 if [[ -n "$BUILD_ARTIFACT" ]]; then
   case "$BUILD_ARTIFACT" in
     *.ipa)
+      if [[ "$RUNNER_PLATFORM" == "Linux" ]]; then
+        printf '::error::.ipa signing evidence requires Apple codesign and is supported on macOS runners only.\n' >&2
+        exit 1
+      fi
       if ! command -v unzip >/dev/null 2>&1; then
         printf '::error::unzip is required to inspect an .ipa build artifact.\n' >&2
         exit 1
@@ -102,6 +117,16 @@ validate_build_artifact() {
     printf '::error::Generated build-artifact.json does not match schema 1.0: %s\n' "$1" >&2
     exit 1
   }
+}
+
+hash_file() {
+  local algorithm="$1"
+  local file_path="$2"
+  if [[ "$RUNNER_PLATFORM" == "macOS" ]]; then
+    shasum -a "$algorithm" "$file_path" | awk '{print $1}'
+  else
+    "sha${algorithm}sum" "$file_path" | awk '{print $1}'
+  fi
 }
 
 extract_android_apk_signing() {
@@ -273,14 +298,24 @@ if [[ -n "$BUILD_ARTIFACT" ]]; then
   fi
 
   BUILD_ARTIFACT_PATH="$OUTPUT_DIRECTORY/build-artifact.json"
-  artifact_sha256="$(shasum -a 256 "$BUILD_ARTIFACT" | awk '{print $1}')"
-  artifact_sha512="$(shasum -a 512 "$BUILD_ARTIFACT" | awk '{print $1}')"
-  artifact_size="$(stat -f '%z' "$BUILD_ARTIFACT")"
+  artifact_sha256="$(hash_file 256 "$BUILD_ARTIFACT")"
+  artifact_sha512="$(hash_file 512 "$BUILD_ARTIFACT")"
+  if [[ "$RUNNER_PLATFORM" == "macOS" ]]; then
+    artifact_size="$(stat -f '%z' "$BUILD_ARTIFACT")"
+    artifact_mtime="$(stat -f '%m' "$BUILD_ARTIFACT")"
+  else
+    artifact_size="$(stat -c '%s' "$BUILD_ARTIFACT")"
+    artifact_mtime="$(stat -c '%Y' "$BUILD_ARTIFACT")"
+  fi
   artifact_mime_type="$(file -b --mime-type "$BUILD_ARTIFACT")"
   artifact_recorded_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
   artifact_build_time="$BUILD_TIME"
   if [[ -z "$artifact_build_time" ]]; then
-    artifact_build_time="$(date -r "$(stat -f '%m' "$BUILD_ARTIFACT")" -u +'%Y-%m-%dT%H:%M:%SZ')"
+    if [[ "$RUNNER_PLATFORM" == "macOS" ]]; then
+      artifact_build_time="$(date -r "$artifact_mtime" -u +'%Y-%m-%dT%H:%M:%SZ')"
+    else
+      artifact_build_time="$(date -u -d "@$artifact_mtime" +'%Y-%m-%dT%H:%M:%SZ')"
+    fi
   fi
   case "$BUILD_ARTIFACT" in
     *.apk) signing_json="$(extract_android_apk_signing)" ;;
@@ -384,12 +419,12 @@ if [[ -d "$SOURCE" ]]; then
   while IFS= read -r source_file; do
     [[ "$source_file" == "$output_root"/* ]] && continue
     relative_file="${source_file#"$source_root"/}"
-    printf '%s  %s\n' "$(shasum -a 256 "$source_file" | awk '{print $1}')" "$relative_file" >> "$source_manifest"
+    printf '%s  %s\n' "$(hash_file 256 "$source_file")" "$relative_file" >> "$source_manifest"
   done < <(find "$source_root" -type f -print | sort)
 else
-  printf '%s  %s\n' "$(shasum -a 256 "$SOURCE" | awk '{print $1}')" "$(basename "$SOURCE")" > "$source_manifest"
+  printf '%s  %s\n' "$(hash_file 256 "$SOURCE")" "$(basename "$SOURCE")" > "$source_manifest"
 fi
-source_sha256="$(shasum -a 256 "$source_manifest" | awk '{print $1}')"
+source_sha256="$(hash_file 256 "$source_manifest")"
 rm -f "$source_manifest"
 jq -n \
   --arg schema_version "1.0" \
